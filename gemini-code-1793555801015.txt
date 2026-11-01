@@ -1,0 +1,24 @@
+# 1. Create a restricted Profile for Free Guests
+/ip hotspot user profile
+add name="guest_locked_profile" \
+    session-timeout=30m \
+    keepalive-timeout=2m \
+    status-autorefresh=1m \
+    rate-limit="2M/2M" \
+    transparent-proxy=no \
+    shared-users=1
+
+# 2. Add the default Free Guest User bound to this locked profile
+/ip hotspot user
+add name="guest" \
+    password="" \
+    profile="guest_locked_profile" \
+    limit-bytes-total=209715200 \
+    comment="Free guest account with 30m lock and 200MB limit"
+
+# 3. Enable Trial Mode (Optional: automatic MAC-based guest authentication)
+/ip hotspot profile
+set [ find default=yes ] \
+    trial-uptime-limit=30m \
+    trial-uptime-reset=1d \
+    trial-user-profile="guest_locked_profile"

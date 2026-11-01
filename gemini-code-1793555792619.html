@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="pragma" content="no-cache" />
+  <meta http-equiv="expires" content="-1" />
+  <!-- Auto refresh interval handled by RouterOS variable $(refresh-timeout) -->
+  $(if refresh-timeout)
+  <meta http-equiv="refresh" content="$(refresh-timeout-secs)" />
+  $(endif)
+  <title>Session Status - Connected</title>
+
+  <!-- External CDNs (Allowed in Hotspot Walled Garden) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      --card-bg: rgba(30, 41, 59, 0.85);
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --text-main: #f8fafc;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+      margin: 0;
+      padding: 1.25rem;
+    }
+
+    .status-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 1.25rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      max-width: 480px;
+      overflow: hidden;
+    }
+
+    .pulse-indicator {
+      width: 12px;
+      height: 12px;
+      background-color: var(--success);
+      border-radius: 50%;
+      display: inline-block;
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+      }
+      70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+      }
+      100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+      }
+    }
+
+    .metric-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 0.75rem;
+      padding: 0.85rem;
+    }
+
+    .progress {
+      background-color: rgba(255, 255, 255, 0.1);
+      height: 8px;
+      border-radius: 4px;
+    }
+
+    .progress-bar {
+      background-color: var(--accent);
+    }
+
+    .badge-guest {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-member {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hidden RouterOS Variables for DOM Parsing -->
+  <div id="mk-status-vars" hidden
+       data-username="$(username)"
+       data-ip="$(ip)"
+       data-mac="$(mac)"
+       data-uptime="$(uptime)"
+       data-bytes-in="$(bytes-in-nice)"
+       data-bytes-out="$(bytes-out-nice)"
+       data-remain-bytes="$(remain-bytes-total-nice)"
+       data-session-left="$(session-time-left)"
+       data-link-logout="$(link-logout)">
+  </div>
+
+  <div class="status-card p-4">
+    <!-- Header: Connection Status -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom border-secondary">
+      <div class="d-flex align-items-center gap-2">
+        <span class="pulse-indicator"></span>
+        <h5 class="mb-0 fw-bold">Active Connection</h5>
+      </div>
+      <span id="user-badge" class="badge rounded-pill px-3 py-2 badge-member">
+        <i class="bi bi-person-fill"></i> <span id="display-user">$(username)</span>
+      </span>
+    </div>
+
+    <!-- Free Guest Lock Limit Notification -->
+    <div id="guest-lock-banner" class="alert alert-warning py-2 px-3 small d-none mb-3" role="alert">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-lock-fill fs-5"></i>
+        <div>
+          <div class="fw-bold">Free Guest Limit Active</div>
+          <span class="text-secondary" style="font-size: 0.75rem;">Session and data quota are locked to standard policy.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metrics Grid -->
+    <div class="row g-2 mb-3">
+      <div class="col-6">
+        <div class="metric-box text-center">
+          <span class="text-secondary small d-block">Session Uptime</span>
+          <span class="fw-bold fs-5 text-light" id="stat-uptime">$(uptime)</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="metric-box text-center">
+          <span class="text-secondary small d-block">Time Remaining</span>
+          <span class="fw-bold fs-5 text-info" id="stat-time-left">
+            $(if session-time-left)$(session-time-left)$(else)Unlimited$(endif)
+          </span>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="metric-box">
+          <div class="d-flex justify-content-between small text-secondary mb-1">
+            <span><i class="bi bi-arrow-down text-success"></i> Download</span>
+          </div>
+          <span class="fw-bold text-light" id="stat-bytes-in">$(bytes-in-nice)</span>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="metric-box">
+          <div class="d-flex justify-content-between small text-secondary mb-1">
+            <span><i class="bi bi-arrow-up text-primary"></i> Upload</span>
+          </div>
+          <span class="fw-bold text-light" id="stat-bytes-out">$(bytes-out-nice)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quota Bar (Shows remaining data if limits are enforced) -->
+    $(if remain-bytes-total)
+    <div class="mb-4">
+      <div class="d-flex justify-content-between small mb-1">
+        <span class="text-secondary">Data Quota Remaining</span>
+        <span class="text-warning fw-bold">$(remain-bytes-total-nice)</span>
+      </div>
+      <div class="progress">
+        <div class="progress-bar bg-warning" role="progressbar" style="width: 70%;" id="quota-progress-bar"></div>
+      </div>
+    </div>
+    $(endif)
+
+    <!-- Client Hardware Details -->
+    <div class="metric-box mb-4 py-2 px-3" style="font-size: 0.8rem;">
+      <div class="d-flex justify-content-between py-1 border-bottom border-secondary border-opacity-25">
+        <span class="text-secondary">Assigned IP</span>
+        <span class="font-monospace text-light">$(ip)</span>
+      </div>
+      <div class="d-flex justify-content-between py-1">
+        <span class="text-secondary">Device MAC</span>
+        <span class="font-monospace text-light">$(mac)</span>
+      </div>
+    </div>
+
+    <!-- Actions: Refresh and Terminate Session -->
+    <div class="d-grid gap-2">
+      <form action="$(link-logout)" name="logout" method="post" onsubmit="return confirm('Disconnect and end this hotspot session?');">
+        <input type="hidden" name="erase-cookie" value="true" />
+        <button type="submit" class="btn btn-outline-danger w-100 py-2">
+          <i class="bi bi-box-arrow-right"></i> Disconnect / Logout
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const vars = document.getElementById("mk-status-vars").dataset;
+      const username = vars.username ? vars.username.toLowerCase() : "";
+      const timeLeft = vars.sessionLeft;
+
+      const userBadge = document.getElementById("user-badge");
+      const guestBanner = document.getElementById("guest-lock-banner");
+
+      // Check if user is a free guest or trial user
+      const isGuest = username.startsWith("guest") || 
+                      username.startsWith("t-") || 
+                      username.includes("trial") || 
+                      (timeLeft && !timeLeft.includes("$(") && timeLeft !== "0s");
+
+      if (isGuest) {
+        userBadge.className = "badge rounded-pill px-3 py-2 badge-guest";
+        guestBanner.classList.remove("d-none");
+      }
+    })();
+  </script>
+</body>
+</html>
