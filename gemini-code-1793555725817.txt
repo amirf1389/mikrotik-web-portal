@@ -1,0 +1,12 @@
+# 1. Whitelist CDNs in Hotspot Walled Garden
+/ip hotspot walled-garden
+add dst-host=cdn.jsdelivr.net action=allow comment="Bootstrap CDN"
+add dst-host=cdnjs.cloudflare.com action=allow comment="FontAwesome Icons"
+
+# 2. Enable RouterOS v7 REST API (RouterOS v7.1+)
+/ip service
+set rest disabled=no port=80 ssl-certificate=none
+
+# 3. Verify HotSpot Server Profile uses HTTP CHAP
+/ip hotspot profile
+set [ find default=yes ] login-by=http-chap,http-pap,trial
